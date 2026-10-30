@@ -1,0 +1,72 @@
+# Dedicated instance; neutral compatibility tested on a9d990033, 2026-10-01.
+use_default_settings:
+  engines:
+    keep_only: [google, bing, google cse]
+general:
+  debug: false
+  instance_name: "123 Reputation private search relay"
+  enable_metrics: false
+  open_metrics: ""
+search:
+  safe_search: 0
+  autocomplete: ""
+  favicon_resolver: ""
+  formats: [json]
+server:
+  secret_key: "__RUNTIME_SECRET__"
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: POST
+  default_http_headers:
+    Cache-Control: no-store
+    Pragma: no-cache
+    Referrer-Policy: no-referrer
+    X-Content-Type-Options: nosniff
+    X-Robots-Tag: noindex, nofollow
+valkey:
+  url: false
+ui:
+  query_in_title: false
+preferences:
+  lock: [autocomplete, favicon_resolver, image_proxy, query_in_title, safesearch, method]
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 10.0
+  pool_connections: 10
+engines:
+  # Candidate engine entries: validate against the active image before use.
+  - name: google
+    engine: google
+    categories: [general]
+    disabled: false
+    inactive: false
+    timeout: 8.0
+    display_error_messages: false
+  - name: bing
+    engine: bing
+    categories: [general]
+    disabled: false
+    inactive: false
+    timeout: 8.0
+    display_error_messages: false
+  - name: google cse
+    engine: google_cse
+    categories: [general]
+    disabled: false
+    inactive: false
+    timeout: 8.0
+    display_error_messages: false
+# Do not inherit optional plugin/background behaviour.
+plugins:
+  searx.plugins.calculator.SXNGPlugin: {active: false}
+  searx.plugins.infinite_scroll.SXNGPlugin: {active: false}
+  searx.plugins.hash_plugin.SXNGPlugin: {active: false}
+  searx.plugins.self_info.SXNGPlugin: {active: false}
+  searx.plugins.unit_converter.SXNGPlugin: {active: false}
+  searx.plugins.ahmia_filter.SXNGPlugin: {active: false}
+  searx.plugins.hostnames.SXNGPlugin: {active: false}
+  searx.plugins.time_zone.SXNGPlugin: {active: false}
+  searx.plugins.oa_doi_rewrite.SXNGPlugin: {active: false}
+  searx.plugins.tor_check.SXNGPlugin: {active: false}
+  searx.plugins.tracker_url_remover.SXNGPlugin: {active: false}

@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+session-results/
+.env
+.env.*
+!.env.example
+deploy/cloudflare/wrangler.production.jsonc

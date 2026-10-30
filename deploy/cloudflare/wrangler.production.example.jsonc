@@ -1,0 +1,74 @@
+{
+  // Review and fill the D1 ID / public Turnstile site key before deployment.
+  // Secrets belong in Wrangler secrets, never this file or static assets.
+  "name": "reputation-scanner",
+  "main": "../../src/private-worker.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "../../public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "app.123reputationmanagement.org", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reputation_app_production",
+      "database_id": "REPLACE_WITH_PRODUCTION_D1_ID"
+    }
+  ],
+  // Assistance requests are emailed to the owner's inbox through Email Routing.
+  // destination_address must be a verified Email Routing destination and must
+  // equal ASSISTANCE_TO; the binding can then send to no other address.
+  // Email Routing is enabled on the notify.123reputationmanagement.org
+  // subdomain ONLY, never on the root domain (the root's MX is 20i StackMail).
+  "send_email": [
+    { "name": "ASSISTANCE_MAIL", "destination_address": "hello@123reputationmanagement.org" }
+  ],
+  "vars": {
+    "ASSISTANCE_TO": "hello@123reputationmanagement.org",
+    "ASSISTANCE_FROM": "scanner@notify.123reputationmanagement.org",
+    "SERP_PROVIDER": "searxng",
+    "ALLOW_SEARCH_RELAY": "false",
+    "CLOUD_AI_ENABLED": "false",
+    // Opt-in AI drafting ("Draft with AI"). Separate from the legacy
+    // CLOUD_AI_ENABLED flag above, which stays false. Turn this on only after
+    // `wrangler secret put AI_API_KEY`; see deploy/cloudflare/README.md.
+    "AI_DRAFTING_ENABLED": "false",
+    "AI_PROVIDER": "openai",
+    "AI_MODEL": "gpt-5-mini",
+    "AI_PROVIDER_NAME": "OpenAI",
+    "AI_DRAFTS_PER_IP_DAY": "10",
+    "AI_DAILY_USD_LIMIT": "5",
+    "AI_INPUT_USD_PER_M": "0.25",
+    "AI_OUTPUT_USD_PER_M": "2",
+    "LOCAL_DEVELOPMENT": "false",
+    "ABUSE_PROTECTION_ENABLED": "true",
+    "TURNSTILE_ENABLED": "true",
+    "TURNSTILE_HOSTNAME": "app.123reputationmanagement.org",
+    "TURNSTILE_SITE_KEY": "",
+    "SEARXNG_URL": "",
+    "SEARXNG_ALLOW_LOOPBACK_HTTP": "false",
+    "SEARXNG_ENGINES": "google cse",
+    "MAX_QUERIES": "12",
+    "SHOW_LIMIT": "20",
+    "DAILY_SERP_LIMIT": "300",
+    "DAILY_USD_LIMIT": "15",
+    // Cloudflare Access (Zero Trust). Partners sign in with an emailed one-time
+    // PIN at /api/partner/login; the Worker verifies the Access token and checks
+    // the D1 partners table. Admin routes also require the admin Access app.
+    // See deploy/cloudflare/README.md, "Partner and admin sign-in".
+    "ACCESS_TEAM_DOMAIN": "REPLACE_WITH_TEAM.cloudflareaccess.com",
+    "ACCESS_PARTNER_AUD": "REPLACE_WITH_PARTNER_APP_AUD",
+    "ACCESS_ADMIN_AUD": "REPLACE_WITH_ADMIN_APP_AUD",
+    "ADMIN_EMAILS": "hello@123reputationmanagement.org",
+    "PARTNER_DAILY_LIMIT": "50",
+    "SERP_COST_PER_1K": "0"
+  },
+  "observability": { "enabled": false },
+  "triggers": { "crons": ["15 * * * *"] }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "reputation-scanner",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "description": "Reputation Scanner: free self-search that finds where your name is linked to negative content and drafts removal requests.",
+  "scripts": {
+    "db:init": "wrangler d1 execute name_scanner --local --file=schema.sql",
+    "dev": "npm run build:browser && wrangler dev --local --port 8787",
+    "test": "vitest run",
+    "check-links": "node scripts/check-links.mjs",
+    "smoke:local": "node scripts/smoke-local.mjs",
+    "dev:demo": "npm run build:browser && wrangler d1 execute name_scanner --local --persist-to .wrangler/demo-state --file=schema.sql && wrangler dev --local --port 8787 --persist-to .wrangler/demo-state --var SERP_PROVIDER:mock --var IP_SALT:local-demo-only --var CLOUD_AI_ENABLED:false --var OPENAI_API_KEY: --var ANTHROPIC_API_KEY: --var SERP_API_KEY: --var LOCAL_DEVELOPMENT:true --var TURNSTILE_ENABLED:false --var RATE_LIMIT_SECRET:local-demo-quota-secret-not-for-production",
+    "dev:live": "node scripts/start-live.mjs",
+    "check:live": "node scripts/start-live.mjs --check",
+    "build:browser": "node scripts/build-browser.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0",
+    "wrangler": "^4",
+    "fake-indexeddb": "^6.2.5",
+    "esbuild": "0.21.5"
+  }
+}

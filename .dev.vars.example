@@ -1,0 +1,9 @@
+# Copy to .dev.vars (gitignored). Never commit real keys.
+# SERP_PROVIDER: session | mock | serper | serpapi | brave
+#   session = this Claude Code session runs the searches and POSTs results to /api/scan/:id/import
+SERP_PROVIDER=session
+SERP_API_KEY=
+# Keep cloud AI disabled for sensitive data. A saved key alone does not enable it.
+CLOUD_AI_ENABLED=false
+ANTHROPIC_API_KEY=
+IP_SALT=change-me

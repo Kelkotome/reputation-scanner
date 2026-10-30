@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Operator dashboard — 123 Reputation</title>
+  <link rel="icon" href="/assets/favicon-123.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css?v=20261001-labels">
+  <link rel="stylesheet" href="/admin.css?v=20261001-serpapi">
+  <script type="module" src="/admin.js?v=20261005-partners"></script>
+</head>
+<body data-page="admin">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="/" aria-label="123 Reputation Management home"><svg class="brand-art brand-art-header" viewBox="0 0 240 54" width="240" height="54" aria-hidden="true" focusable="false"><svg x="0" y="0" width="48" height="54" viewBox="338 188 402 452"><image href="/assets/logo-123-colour.png" width="1080" height="1080"/></svg><svg x="59" y="7" width="181" height="41" viewBox="178 650 725 163"><image href="/assets/logo-123-colour.png" width="1080" height="1080"/></svg></svg></a>
+    <nav class="app-nav" aria-label="Operator tools"><a href="/admin.html" aria-current="page">Dashboard</a><a href="/">Reputation scan</a><a href="/takedowns.html">Removal requests</a></nav>
+    <span class="app-label">Internal access</span>
+  </div></header>
+  <main id="main" class="wrap admin-main">
+    <div class="page-heading admin-heading"><div><p class="eyebrow">123 Reputation · internal</p><h1>Usage, at a glance.</h1><p>Aggregate usage for this app, with a separate view of public and operator activity.</p></div><button id="admin-logout" class="button secondary compact" type="button" hidden>Sign out</button></div>
+    <p id="admin-status" class="hint admin-status" role="status">Checking your operator session…</p>
+    <p id="admin-error" class="notice error spacing-9" role="alert" hidden></p>
+    <section id="admin-login-panel" class="panel admin-login" aria-labelledby="admin-login-title">
+      <p class="eyebrow">Operator sign-in</p><h2 id="admin-login-title">Open your dashboard.</h2>
+      <p class="admin-login-copy">Use the operator access key supplied by your administrator. Usage stays locked until the server confirms your session.</p>
+      <form id="admin-login-form" autocomplete="off">
+        <div class="field"><label for="admin-access-key">Operator access key</label><input id="admin-access-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="256" aria-describedby="admin-key-hint"><p id="admin-key-hint" class="hint">The key is cleared after sign-in is attempted. This page does not save it in browser storage. An HttpOnly session cookie keeps you signed in.</p></div>
+        <div class="form-footer"><button id="admin-login-button" class="button primary" type="submit" disabled>Sign in →</button></div>
+      </form>
+    </section>
+    <div id="admin-dashboard" hidden>
+      <section class="admin-access-panel" aria-labelledby="admin-access-title"><div><p class="eyebrow">Operator access is active</p><h2 id="admin-access-title" tabindex="-1">Ready when you are.</h2><p id="admin-allowance">Operator scans have no daily scan limit. Per-scan and provider safeguards still apply.</p><p id="admin-expiry" class="admin-expiry"></p></div><a class="button primary" href="/">Run an operator scan →</a></section>
+      <section class="panel admin-table-panel admin-partners" aria-labelledby="admin-partners-title"><div class="admin-section-heading"><div><p class="eyebrow">Partner organisations</p><h2 id="admin-partners-title">Partner access</h2></div><button id="partners-refresh" class="button secondary compact" type="button">Refresh</button></div>
+<p class="hint spacing-3">Partners sign in at <a href="/partner.html">/partner.html</a> with a one-time code emailed by Cloudflare Access. Only emails listed here can sign in. Removing a partner signs them out straight away.</p>
+<form id="partner-form" autocomplete="off"><div class="form-grid"><div class="field"><label for="partner-email">Work email *</label><input id="partner-email" type="email" required maxlength="254" autocapitalize="none" spellcheck="false"></div><div class="field"><label for="partner-org">Organisation *</label><input id="partner-org" required maxlength="120"></div><div class="field"><label for="partner-limit">Scans per day</label><input id="partner-limit" type="number" min="1" max="500" step="1" value="50" required></div></div><div class="form-footer"><button id="partner-save" class="button primary compact" type="submit">Add or update partner</button><p id="partner-message" class="hint" role="status"></p></div></form>
+<div class="admin-table-scroll spacing-4" role="region" aria-label="Partners" tabindex="0"><table class="admin-table"><caption class="sr-only">Registered partners with scan usage</caption><thead><tr><th scope="col">Email</th><th scope="col">Organisation</th><th scope="col">Scans per day</th><th scope="col">Today</th><th scope="col">Last 30 days</th><th scope="col">Last sign-in</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody id="partner-rows"></tbody></table></div><p id="partners-empty" class="hint spacing-4" hidden>No partners yet. Add a work email above.</p></section>
+      <div class="notice admin-ai"><strong id="admin-ai-heading">Cloud AI is disabled</strong><p id="admin-ai-copy">No cloud AI is enabled; no AI tokens are used by this app. Matching rules and request templates run in the browser.</p></div>
+      <section class="admin-usage" aria-labelledby="admin-usage-title">
+        <div class="admin-section-heading"><div><p class="eyebrow">Aggregate counters</p><h2 id="admin-usage-title">Today’s usage</h2></div><div class="admin-usage-actions"><div class="admin-period" role="group" aria-label="Usage period"><button type="button" class="admin-period-button" data-period="today" aria-pressed="true">Today</button><button type="button" class="admin-period-button" data-period="month" aria-pressed="false">Last 30 days</button></div><button id="admin-refresh" class="button secondary compact" type="button">Refresh</button></div></div>
+        <p id="admin-period-detail" class="hint">Daily counters use UTC.</p>
+        <dl class="admin-metrics"><div class="admin-metric"><dt>Scans started</dt><dd id="metric-scans">—</dd><dd class="admin-metric-caption">Public and operator combined</dd></div><div class="admin-metric"><dt>Search requests</dt><dd id="metric-requests">—</dd><dd class="admin-metric-caption" id="metric-outcomes">—</dd></div><div class="admin-metric"><dt>Estimated search API cost</dt><dd id="metric-cost">—</dd><dd class="admin-metric-caption">USD · configured rates</dd></div><div class="admin-metric"><dt>AI tokens</dt><dd id="metric-ai-tokens">—</dd><dd class="admin-metric-caption" id="metric-ai-cost">—</dd></div></dl>
+        <div class="panel admin-table-panel"><h3>Public and operator activity</h3><div class="admin-table-scroll" role="region" aria-label="Usage by audience" tabindex="0"><table class="admin-table"><caption class="sr-only">Totals for the selected period, split by audience</caption><thead><tr><th scope="col">Audience</th><th scope="col">Scans</th><th scope="col">Requests</th><th scope="col">Succeeded</th><th scope="col">Failed</th><th scope="col">Est. API cost (USD)</th><th scope="col">AI input / output</th><th scope="col">AI cost (USD)</th></tr></thead><tbody id="admin-audience-rows"></tbody></table></div></div>
+        <p class="hint admin-estimate-note">Search costs are estimates from configured per-request rates, including attempted requests that fail. They exclude VPS hosting, other apps, taxes and adjustments, and are not vendor invoices or billing history. Requests still in flight may not yet have an outcome.</p>
+      </section>
+      <section class="panel admin-table-panel admin-history" aria-labelledby="admin-history-title"><div class="admin-section-heading"><div><p class="eyebrow">Daily activity</p><h2 id="admin-history-title">Last 30 days</h2></div><p id="admin-retention" class="hint">UTC dates · aggregate counters only</p></div><div class="admin-table-scroll" role="region" aria-label="Daily usage history" tabindex="0"><table class="admin-table"><caption class="sr-only">Daily public and operator scan counts with combined request outcomes and estimated search API cost</caption><thead><tr><th scope="col">Date (UTC)</th><th scope="col">Public scans</th><th scope="col">Operator scans</th><th scope="col">Requests</th><th scope="col">Succeeded</th><th scope="col">Failed</th><th scope="col">Est. API cost (USD)</th></tr></thead><tbody id="admin-daily-rows"></tbody></table></div><p id="admin-history-empty" class="hint spacing-4" hidden>No daily usage has been recorded yet.</p></section>
+      <section class="admin-detail-grid"><div class="panel"><h2>Configured search rates</h2><p class="hint spacing-3">Rates used for estimates, in USD per 1,000 attempted requests.</p><ul id="admin-provider-rates" class="admin-provider-rates"></ul></div><div class="panel"><h2>What this view contains</h2><p class="admin-detail-copy">Counters and estimated costs for this app only. It does not list IP addresses, search terms, names, page URLs, results or case content.</p><p id="admin-updated" class="hint spacing-4"></p></div></section>
+    </div>
+    <noscript><p class="notice spacing-4">JavaScript is required for operator sign-in. The access key will not be submitted while JavaScript is unavailable.</p></noscript>
+  </main>
+  <footer class="admin-footer"><div class="wrap"><p>© 2026 123 Reputation Management</p><a href="/">Back to the toolkit →</a></div></footer>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  // Reputation Scanner (local development) — Cloudflare Worker + D1 + static assets.
+  // Local:  npm run db:init && npm run dev   ->  http://localhost:8787
+  "name": "name-scanner",
+  "main": "src/private-worker.js",
+  "workers_dev": false,
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "name_scanner", "database_id": "local-dev-placeholder" }
+  ],
+  "vars": {
+    "ALLOW_SEARCH_RELAY": "false",
+    "CLOUD_AI_ENABLED": "false",
+    // Opt-in AI drafting ("Draft with AI"). Separate from the legacy
+    // CLOUD_AI_ENABLED flag above, which stays false. Turn this on only after
+    // `wrangler secret put AI_API_KEY`; see deploy/cloudflare/README.md.
+    "AI_DRAFTING_ENABLED": "false",
+    "AI_PROVIDER": "openai",
+    "AI_MODEL": "gpt-5-mini",
+    "AI_PROVIDER_NAME": "OpenAI",
+    "AI_DRAFTS_PER_IP_DAY": "10",
+    "AI_DAILY_USD_LIMIT": "5",
+    "AI_INPUT_USD_PER_M": "0.25",
+    "AI_OUTPUT_USD_PER_M": "2",
+    "LOCAL_DEVELOPMENT": "false",
+    "ABUSE_PROTECTION_ENABLED": "true",
+    "TURNSTILE_ENABLED": "true",
+    "TURNSTILE_HOSTNAME": "app.123reputationmanagement.org",
+    "MAX_QUERIES": "12",
+    "SHOW_LIMIT": "20",
+    "DAILY_SERP_LIMIT": "3000",
+    "DAILY_USD_LIMIT": "15",
+    "SERP_COST_PER_1K": "1.0"
+  },
+  "observability": { "enabled": false },
+  "triggers": { "crons": ["15 * * * *"] }
+}

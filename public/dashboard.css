@@ -1,0 +1,21 @@
+.dashboard-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px }
+.report-document { max-width:900px;margin:32px auto;background:white;color:#172c3b;padding:48px;border:1px solid #dce4e6;box-shadow:0 8px 36px #172c3b0c;font:15px/1.65 Arial,sans-serif }
+.report-document h1 { font-size:30px;line-height:1.2;margin:18px 0 28px }
+.report-document h2 { font-size:19px;border-bottom:1px solid #cedbdd;padding-bottom:8px;margin-top:30px }
+.document-brand { display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:3px solid #b29a60;padding-bottom:24px }
+.document-brand span { font-size:10px;letter-spacing:1px;color:#526573 }
+.report-document .eyebrow { margin-top:24px;font-size:11px;letter-spacing:1px;text-transform:uppercase }
+.report-document dl { display:grid;grid-template-columns:180px minmax(0,1fr);gap:6px 16px }
+.report-document dt { font-weight:bold }.report-document dd { margin:0;overflow-wrap:anywhere }
+.report-document .preserve { white-space:pre-wrap;overflow-wrap:anywhere }
+.report-warning { border-left:3px solid #b29a60;padding:12px 18px;background:#f6f5ef;font-size:13px }
+.report-document table { border-collapse:collapse;width:100%;table-layout:fixed;font-size:13px }
+.report-document th,.report-document td { padding:10px;border:1px solid #dce4e6;text-align:left;vertical-align:top;overflow-wrap:anywhere }
+.report-document th:first-child { width:50px }.report-document th:last-child { width:150px }
+.report-document th { background:#edf4f4 }.report-document .url { font-size:12px;overflow-wrap:anywhere }
+.report-document li { margin-bottom:12px;overflow-wrap:anywhere }
+.report-document footer { margin-top:36px;border-top:1px solid #cedbdd;padding-top:14px;font-size:11px;color:#526573 }
+.followup-card { border-top:1px solid #dce4e6;padding:20px 0 }.followup-card .button { margin:4px }
+@media(max-width:650px) { .dashboard-grid { grid-template-columns:1fr }.report-document { padding:20px }.document-brand { align-items:flex-start;flex-direction:column }.report-document dl { grid-template-columns:1fr }.report-document th:last-child { width:100px } }
+@page { size:A4;margin:17mm }
+@media print { body { background:white!important } body>.site-header,.skip-link,.dashboard-controls,#dashboard-error { display:none!important } main.wrap { width:auto!important;max-width:none!important;padding:0!important;margin:0!important }.report-document { margin:0;padding:0;border:0;box-shadow:none;max-width:none;font-size:10pt }.report-document h1 { font-size:22pt }.report-document h2 { break-after:avoid;font-size:14pt }.report-document tr,.document-brand { break-inside:avoid } .report-document thead { display:table-header-group } }
