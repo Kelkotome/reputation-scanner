@@ -2,7 +2,7 @@ import { localApi, reportData, setChallengeHandler } from '/local-api.js?v=20261
 import { createBotCheck } from '/bot-check.js?v=20261004-ai';
 import { requestAiConsent, aiDraftingAvailable, aiProviderName, AI_DRAFT_LABEL } from '/ai-draft.js?v=20261004-ai';
 import { lookupReportingContact } from '/reporting-lookup.js?v=20260928-domain';
-import { setupEmailSending } from '/email-send.js?v=20260930-sender';
+import { setupEmailSending } from '/email-send.js?v=20261101-simple';
 import { stopItemFollowups, forgetRecordMetadata } from '/followup-control.js?v=20260930-sender';
 
 const $ = (selector) => document.querySelector(selector);

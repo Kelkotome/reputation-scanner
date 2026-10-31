@@ -4,7 +4,7 @@ import { requestAiConsent, aiDraftingAvailable, aiProviderName, AI_DRAFT_LABEL }
 import { createBotCheck } from '/bot-check.js?v=20261004-ai';
 import { additionalResultPreview } from '/result-preview.js?v=20260927-contact';
 import { resultLabelView } from '/result-labels.js?v=20261001-labels';
-import { setupEmailSending } from '/email-send.js?v=20260930-sender';
+import { setupEmailSending } from '/email-send.js?v=20261101-simple';
 import { lookupReportingContact } from '/reporting-lookup.js?v=20260928-domain';
 import { stopItemFollowups, forgetRecordMetadata } from '/followup-control.js?v=20260930-sender';
 
@@ -583,13 +583,16 @@ function initReport() {
     const primary = (report.shown || []).filter(eligible).slice(0, 20);
     const primaryIds = new Set(primary.map((hit) => String(hit.id)));
     const extra = (report.extra || []).filter((hit) => eligible(hit) && !primaryIds.has(String(hit.id)));
-    const shown = primary;
+    // Resolved or removed mentions leave the main list but stay reopenable below.
+    const finished = (hit) => ['resolved', 'removed'].includes(hit.status);
+    const shown = primary.filter((hit) => !finished(hit));
+    const done = primary.filter(finished);
     const preview = additionalResultPreview(extra);
     const other = (report.sameName || []).filter((hit) => hit.category !== 'sensitive_intimate' && hit.status !== 'not_me');
     for (const hit of [...(report.sameName || []), ...(report.shown || []), ...(report.extra || []), ...(report.notMe || [])]) {
       if (hit.status === 'not_me' && hit.category !== 'sensitive_intimate') excluded.set(hit.id, hit);
     }
-    const key = JSON.stringify([shown, other, [...excluded.values()], report.status, preview, report.sameNameCount, report.subject_type]);
+    const key = JSON.stringify([shown, done, other, [...excluded.values()], report.status, preview, report.sameNameCount, report.subject_type]);
     if (!force && key === renderKey) return;
     renderKey = key;
     const flagged = shown.filter(hit => hit.category !== 'neutral');
@@ -608,8 +611,9 @@ function initReport() {
     $('#empty-results').hidden = shown.length > 0;
     if (!shown.length) {
       const incomplete = report.partial || ['error', 'paused_budget'].includes(report.status);
-      $('#empty-results h3').textContent = incomplete ? 'Search incomplete' : report.status === 'done' ? 'No prioritised mentions to show' : 'Building your picture';
-      $('#empty-results p').textContent = incomplete
+      const allDone = !incomplete && done.length > 0;
+      $('#empty-results h3').textContent = allDone ? 'All mentions dealt with' : incomplete ? 'Search incomplete' : report.status === 'done' ? 'No prioritised mentions to show' : 'Building your picture';
+      $('#empty-results p').textContent = allDone ? 'Every mention here is marked resolved or removed. You’ll find them under Done.' : incomplete
         ? 'Some searches have not completed. This is not a finding that no concerning content exists. Retry the scan to continue.'
         : report.status === 'done'
         ? 'This scan did not surface a qualifying mention. Search coverage is limited; this does not confirm that no concerning content exists.'
@@ -630,6 +634,9 @@ function initReport() {
     $('#same-name-title').textContent = `${sameCount} ${sameCount === 1 ? 'result may' : 'results may'} ${isBusiness()
       ? 'refer to a different business with a similar name' : 'refer to someone else with your name'}`;
     $('#same-name-results').replaceChildren(...other.map((hit) => hitCard(hit, true)));
+    $('#done-section').hidden = done.length === 0;
+    $('#done-title').textContent = `Done (${done.length})`;
+    $('#done-results').replaceChildren(...done.map((hit) => hitCard(hit)));
     $('#not-me-section').hidden = excluded.size === 0;
     $('#not-me-results').replaceChildren(...[...excluded.values()].map((hit) => hitCard(hit, true)));
   }
@@ -721,8 +728,8 @@ function initReport() {
         $('#delete-scan').hidden = true;
         report = null;
         excluded.clear();
-        for (const id of ['results', 'same-name-results', 'not-me-results']) $(`#${id}`).replaceChildren();
-        for (const id of ['more-banner', 'same-name', 'not-me-section', 'session-notice', 'empty-results']) $(`#${id}`).hidden = true;
+        for (const id of ['results', 'done-results', 'same-name-results', 'not-me-results']) $(`#${id}`).replaceChildren();
+        for (const id of ['more-banner', 'done-section', 'same-name', 'not-me-section', 'session-notice', 'empty-results']) $(`#${id}`).hidden = true;
         $('#report-name').textContent = 'Report unavailable';
         $('#result-count').textContent = '';
         $('#progress-count').textContent = '';
@@ -833,31 +840,38 @@ function initReport() {
     emailSending.setChannel(info.channel);
     const channels = $('#draft-channels');
     channels.replaceChildren();
-    function add(title, description) {
-      const item = node('div', 'channel-item'); item.append(node('strong', '', title), node('p', '', description)); channels.append(item);
+    // One recommended route up front; everything else folds away.
+    const primary = node('div');
+    const more = node('details', 'channel-more');
+    more.append(node('summary', '', 'More places to report'));
+    more.hidden = true;
+    channels.append(primary, more);
+    function add(title, description, extra = false) {
+      const item = node('div', 'channel-item'); item.append(node('strong', '', title), node('p', '', description));
+      if (extra) { more.append(item); more.hidden = false; } else primary.replaceChildren(item);
     }
-    if (info.channel) add(info.channel.name || 'Publisher or platform', info.channel.how || 'Review the platform’s reporting requirements before submitting.');
+    if (info.channel) add(`Report to ${info.channel.name || 'the website'}`, info.channel.how || 'Check the platform’s reporting requirements before you submit.');
     else {
       const lookupHit = currentHit;
-      add('Finding a reporting route', 'For an unlisted site, only its hostname is shared with our server, public DNS and registration services to find infrastructure abuse contacts. The page and any media are not fetched.');
+      add('Finding where to report this…', 'Only the website’s address is checked. The page itself isn’t opened.');
       lookupReportingContact(lookupHit.url).then(result => {
         if (currentHit !== lookupHit || draftInfo?.channel) return;
         const selected = result.contacts?.[0];
         emailSending.setContacts(result.contacts || []);
-        add(selected ? 'Infrastructure escalation route' : 'Contact needs investigation', selected
-          ? `${selected.name}: ${selected.email || selected.form}. ${selected.how}`
-          : 'No usable public abuse contact was found. Ask us to investigate the correct publisher or host.');
-        for (const alternative of (result.contacts || []).slice(1)) add('Additional escalation contact', `${alternative.name}: ${alternative.email || alternative.form}. ${alternative.how}`);
+        add(selected ? `Report to ${selected.name}` : 'No reporting contact found', selected
+          ? selected.how
+          : 'Ask us to find the right publisher or host.');
+        for (const alternative of (result.contacts || []).slice(1)) add(alternative.name, `${alternative.email || alternative.form}. ${alternative.how}`, true);
       }).catch(() => {
-        if (currentHit === lookupHit) add('Contact lookup unavailable', 'The automatic check could not establish a destination. Ask us to investigate the correct publisher or host.');
+        if (currentHit === lookupHit) add('Couldn’t find where to report this', 'Ask us to find the right publisher or host.');
       });
     }
-    if (info.google?.url) add('Google search results', `${info.google.label || 'Google removal route'}. Removing a search result does not remove the original page.`);
-    if (info.abuse?.host) add('Hosting provider', info.abuse.host);
-    if (info.abuse?.registrar) add('Domain registrar', info.abuse.registrar);
+    if (info.google?.url) add('Google search results', `${info.google.label || 'Google removal route'}. Removing a search result doesn’t remove the original page.`, true);
+    if (info.abuse?.host) add('Hosting provider', info.abuse.host, true);
+    if (info.abuse?.registrar) add('Domain registrar', info.abuse.registrar, true);
     const emails = emailContacts(info);
-    if (emails.length) add('Available abuse contacts', emails.join(' · '));
-    if (info.abuse?.cloudflare) add('Cloudflare', 'Use the Cloudflare abuse form and select the relevant report type.');
+    if (emails.length) add('Abuse contacts', emails.join(' · '), true);
+    if (info.abuse?.cloudflare) add('Cloudflare', 'Use the Cloudflare abuse form and pick the matching report type.', true);
     $('#open-form').hidden = !reportingForm(info);
     $('#open-google').hidden = !safeUrl(info.google?.url);
     $('#email-draft').hidden = !emails.length;

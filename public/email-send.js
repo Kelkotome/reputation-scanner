@@ -6,6 +6,7 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
   const $ = s => document.querySelector(fields[s] || s);
   const box = document.createElement('section');
   box.className = 'panel spacing-4';
+  box.hidden = true;
   box.innerHTML = `<h3>Send from your email account</h3>
     <p class="hint">Use the email entered above as your sending address. Connect that same mailbox to send through the platform. We request sending permission and account identity, not inbox access.</p>
     <div class="field"><label for="sender-provider">Who hosts this mailbox?</label><select id="sender-provider"><option value="choose">Choose for a business or other address</option><option value="gmail">Gmail / Google Workspace</option><option value="outlook">Outlook / Microsoft 365</option><option value="other">Other provider / my email app</option></select><p class="hint" id="sender-guidance" role="status"></p></div>
@@ -17,7 +18,7 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
   $('#draft-email').closest('.field').after(box);
   const recipient = document.createElement('div');
   recipient.className = 'field';
-  recipient.innerHTML = `<label for="send-recipient">Reporting recipient</label><input id="send-recipient" type="email" maxlength="254" autocomplete="off" placeholder="Selected automatically when a verified email is available"><p id="recipient-routing" class="hint"></p><a id="recipient-route-link" class="button secondary" target="_blank" rel="noopener noreferrer" hidden></a><button id="send-platform" type="button" class="button primary" disabled>Review & send from connected account</button><p id="send-status" class="inline-status" role="status"></p>`;
+  recipient.innerHTML = `<label for="send-recipient">Reporting recipient</label><input id="send-recipient" type="email" maxlength="254" autocomplete="off" placeholder="Selected automatically when a verified email is available"><p id="recipient-routing" class="hint"></p><a id="recipient-route-link" class="button secondary" target="_blank" rel="noopener noreferrer" hidden></a><button id="send-platform" type="button" class="button primary" disabled hidden>Review & send from connected account</button><p id="send-status" class="inline-status" role="status"></p>`;
   $('#draft-body').closest('.field').after(recipient);
   const manual = document.createElement('section');
   manual.innerHTML = `<h3>Use your own email app</h3><p class="hint">For other providers, open or download a draft and send it yourself. Select the sending address entered above in your email app. Opening a draft does not send it. Automatic follow-ups are unavailable for this route; record the sent date and follow up manually.</p><div class="modal-actions"><button type="button" class="button secondary" id="manual-email-open">Open draft in email app</button><button type="button" class="button secondary" id="manual-email-download">Download email draft (.eml)</button></div>`;
@@ -47,6 +48,7 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
     route = recipientRoute(channel);
     $('#send-recipient').value = route.email;
     $('#send-recipient').disabled = route.kind === 'form' || route.kind === 'manual';
+    $('#send-recipient').hidden = $('label[for="send-recipient"]').hidden = route.kind === 'form' || route.kind === 'manual';
     $('#recipient-routing').textContent = route.label;
     const link = $('#recipient-route-link');
     link.hidden = !route.url && route.kind !== 'unknown';
@@ -102,6 +104,9 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
       }
       $('#connected-account').textContent = account ? `Connected: ${account.email} (${account.provider === 'gmail' ? 'Gmail' : 'Outlook'}). Expires ${new Date(account.expires_at).toLocaleString()}. ${account.local_preview ? 'Automatic follow-ups are unavailable in this local preview; use the hosted app.' : account.followups_enabled ? 'Automatic follow-ups available.' : 'Reconnect with the 30-day option to enable automatic follow-ups.'}`
         : Object.values(result.providers).some(Boolean) ? 'Connect an account when you are ready to send.' : 'Direct sending is awaiting provider setup. You can still preview drafts or open them in your email app.';
+      // Hide account sending entirely until a provider is configured.
+      const sendingAvailable = Boolean(account) || Object.values(result.providers).some(Boolean);
+      box.hidden = !sendingAvailable; $('#send-platform').hidden = !sendingAvailable;
       $('#disconnect-email').hidden = !account;
       $('#use-connected-email').hidden = !account;
     } catch { account = null; $('#connected-account').textContent = 'Email connection could not be checked. Your draft is still available.'; }
