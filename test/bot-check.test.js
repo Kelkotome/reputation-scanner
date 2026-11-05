@@ -41,6 +41,17 @@ describe('on-demand security check', () => {
     expect(ui.document.activeElement.focus).toHaveBeenCalledOnce();
   });
 
+  it('renders on first load without calling turnstile.ready, which throws on async scripts', async () => {
+    const ui = dom(), window = {}, ready = vi.fn(() => { throw new Error('Remove async/defer'); });
+    const sdk = { ready, render: vi.fn(() => 'widget-1'), remove: vi.fn() };
+    const check = createBotCheck({ document: ui.document, window });
+    const pending = check({ action: 'scan_start', sitekey: 'public-key' });
+    window.turnstile = sdk; ui.document.head.children[0].onload(); await flush();
+    expect(ready).not.toHaveBeenCalled();
+    expect(sdk.render).toHaveBeenCalledOnce();
+    sdk.render.mock.calls[0][1].callback('single-use-token');
+    expect(await pending).toBe('single-use-token');
+  });
   it('clears failed widgets, exposes manual retry and ignores callbacks from an old attempt', async () => {
     const ui = dom(), sdk = { render: vi.fn().mockReturnValueOnce('old').mockReturnValueOnce('fresh'), remove: vi.fn() };
     const check = createBotCheck({ document: ui.document, window: {}, load: async () => sdk });

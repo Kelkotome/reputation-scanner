@@ -19,6 +19,43 @@ describe('result classification', () => {
     expect(classifyHeuristic(business, { url: 'https://greenleaf.example.attacker.test', title: 'Green Leaf Studio', snippet: 'Unused Employer Unused School greenleaf.example.attacker.test' }).match_confidence).toBe(0.4);
     expect(classifyHeuristic({ ...business, context: { ...business.context, industry: 'IT' } }, { title: 'Green Leaf Studio', snippet: 'Hospitality directory' }).match_confidence).toBe(0.4);
   });
+  describe('only flags concern wording about the person', () => {
+    const esther = { full_name: 'Esther Tan', context: {} };
+    const fb = 'https://www.facebook.com/dbs.sg/posts/1';
+    it.each([
+      ['comment author', 'China scam alert for food delivery - Facebook', fb, '... Just hang up. 1y · 1 like. Esther Tan. Scammers are damn sickening, always out to cheat others . 1y · 1 like.', 'commenter'],
+      ['comment praising an arrest', 'I want to lay a trap - DBS', fb, '02.2026 ... Esther Tan. Excellent team work by all involved to arrest this hideous scammer 37w. Jens Homepreneur.', 'commenter'],
+      ['poster arrow', 'Other posts - Shopping Mall', fb, '3 Tagen ... Esther Tan ▻ SG Singapore Online Shopping Mall. 5m · Public. 0 ... Dear scammers, Please remove my number from your scam list.', 'commenter'],
+      ['comment after a fragment', 'Refused to reveal details about the case', fb, '... scandalising the court. 5y · 5 ... Esther Tan. Trying to tarnish our Singapore Police Force by telling a ...', 'commenter'],
+      ['hospital footer', 'Dr Esther Tan - General Hospital', 'https://www.example-hospital.sg/doctor/Esther_Tan', 'Dr Esther Tan is a Senior Consultant in Emergency Medicine ... Beware of Scam Calls. We will NEVER ask you to transfer money', 'elsewhere_on_page'],
+      ['lawyer biography', 'Esther Tan - Partners', 'https://www.lawfirm.example/people/90', 'She was admitted as an Advocate of the High Court of Malaya in 2014. Esther is principally involved in dispute resolution.', 'elsewhere_on_page'],
+      ['newspaper byline', "'But officer, I was having a seizure'", 'https://eresources.nlb.gov.sg/newspapers/1', "Esther Tan - Esther Tan MAN ARRESTED OVER 'DRUNKEN BEHAVIOUR' Epileptic's mum claims she wasn't allowed to give son his medicine in lock-up. He found himself handcuffed and inside a police", 'writer'],
+      ['headline before an archive byline', 'The Straits Times, Page 21', 'https://eresources.nlb.gov.sg/newspapers/2', 'Lorry hits traffic cop on BKE Esther Tan - Esther Tan By A TRAFFIC police officer, who stopped to help the driver, was knocked down', 'writer'],
+      ['cut-off archive byline', 'The Straits Times, Page 21', 'https://eresources.nlb.gov.sg/newspapers/3', '... Esther Tan By A TRAFFIC police officer, who stopped to help the driver, was knocked down', 'writer'],
+      ['defence counsel', 'Lawyer charged with threatening fellow practitioner', 'https://www.nst.com.my/news/nation/1', 'Deputy public prosecutor Syafiq Hasim prosecuted while the accused was represented by counsel Esther Tan Siew Choo.', 'case_role'],
+      ['by-line', 'Man charged in court over scam', 'https://news.example/2', 'By Esther Tan. A man was charged in court with fraud on Monday.', 'writer'],
+    ])('does not flag a %s', (_, title, url, snippet, mention_note) => {
+      expect(classifyHeuristic(esther, { title, url, snippet })).toMatchObject({ category: 'neutral', severity: 1, mention_note });
+    });
+    it.each([
+      ['Esther Tan is a scammer - Facebook', fb, 'Took my deposit.', 'scam_fraud'],
+      ['Warning to buyers', fb, 'Please avoid Esther Tan, the scammer who took my deposit.', 'scam_fraud'],
+      ['Warning to buyers', fb, 'I reported Esther Tan. She was arrested by police last week.', 'crime_legal'],
+      ['Local news', 'https://news.example/1', 'Esther Tan, 34, was charged in court on Monday.', 'crime_legal'],
+      ['Lawyer Esther Tan charged with fraud', 'https://news.example/3', 'A lawyer appeared in court on Monday.', 'scam_fraud'],
+      ['Warning to buyers', 'https://forum.example/1', 'I was scammed by Esther Tan last year.', 'scam_fraud'],
+      ['Esther Tan home address leaked', 'https://forum.example/2', 'Her details were posted here.', 'doxxing_personal_info'],
+    ])('still flags direct wording: %s', (title, url, snippet, category) => {
+      expect(classifyHeuristic(esther, { title, url, snippet }).category).toBe(category);
+    });
+    it('keeps a professional listing with an email address ordinary', () => {
+      expect(classifyHeuristic(esther, { title: 'Esther Tan - The Law Society', url: 'https://solicitors.lawsociety.org.uk/person/1/esther-tan',
+        snippet: 'Esther Tan. SRA Regulated. Telephone: 01502532700; Email: Show email address. Director at Example Limited, Lowestoft, ...' })).toMatchObject({ category: 'neutral', severity: 0 });
+    });
+    it('falls back to the whole result when the name is only in the address', () => {
+      expect(classifyHeuristic(esther, { title: 'Scam warning', url: 'https://news.example/esther-tan', snippet: 'A local fraud case' }).category).toBe('scam_fraud');
+    });
+  });
   it('keeps a clean profile neutral and uses context for identity confidence', () => {
     const result = classifyHeuristic(scan, { title: 'Anne Lee profile', snippet: 'Designer at Example Studio in Singapore' });
     expect(result.category).toBe('neutral');

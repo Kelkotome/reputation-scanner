@@ -1,4 +1,4 @@
-import { listSaved, reportData } from '/local-api.js?v=20261004-ai';
+import { listSaved, reportData } from '/local-api.js?v=20261105-role';
 import { reportMarkup, timestamp } from '/report-export.js?v=20261004-ai';
 const $ = id => document.getElementById(id);
 let records = [], current = null, receipts = [], jobs = [], generation = 0;

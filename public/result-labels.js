@@ -1,5 +1,11 @@
 // Presentation only: labels explain saved estimates without changing the
 // classification, ranking, identity decision or finding's tracking status.
+const notes = {
+  commenter: ['Name appears as a commenter', 'This name appears as someone commenting or posting, not as the subject of the page. Open it to check whether the comment is yours and whether you want it removed.'],
+  writer: ['Name appears as the writer', 'This name appears as the writer of the article, not as its subject. Open it to check whether that is you.'],
+  case_role: ['Name appears as a lawyer or official', 'This name appears as a lawyer, prosecutor or judge in a case, not as the person accused. Open it to check.'],
+  elsewhere_on_page: ['Concern words elsewhere on the page', 'Concern wording appears on this page, but not next to the name, so it may have nothing to do with you. Open it to check.'],
+};
 const topics = {
   scam_fraud: ['Scam or fraud wording', 'The search preview was flagged for wording associated with scams or fraud. This does not establish that anyone committed fraud.'],
   crime_legal: ['Crime or court wording', 'The search preview was flagged for wording associated with crime, police or court matters. The words may refer to unrelated content or another person.'],
@@ -13,6 +19,7 @@ export function resultLabelView(hit = {}, { business = false } = {}) {
   const topic = Object.hasOwn(topics, hit.category) ? topics[hit.category] : null;
   const otherIdentity = hit.category === 'same_name_other_person' || hit.status === 'not_me';
   const ordinary = hit.category === 'neutral' && !otherIdentity;
+  const note = ordinary && Object.hasOwn(notes, hit.mention_note) ? notes[hit.mention_note] : null;
   const severity = typeof hit.severity === 'number' && Number.isFinite(hit.severity) ? hit.severity : 0;
   const priority = otherIdentity ? 'identity' : topic ? severity >= 4 ? 'first' : 'next' : 'context';
   const priorityLabel = { identity: 'Check identity first', first: 'Review first', next: 'Review next', context: 'Review context' }[priority];
@@ -24,11 +31,11 @@ export function resultLabelView(hit = {}, { business = false } = {}) {
     : confidence >= .7 ? `More likely to be about ${subject}` : `May be about ${subject}`;
   return {
     topicLabel: otherIdentity ? business ? 'Similar business name' : 'Similar name'
-      : topic ? `Possible concern: ${topic[0]}` : ordinary ? 'Ordinary name mention' : 'Mention to review',
+      : topic ? `Possible concern: ${topic[0]}` : note ? note[0] : ordinary ? 'Ordinary name mention' : 'Mention to review',
     tone: otherIdentity ? 'identity' : topic ? 'concern' : 'ordinary',
     priority, priorityLabel, identityLabel,
     explanation: otherIdentity ? `This result may refer to a different ${business ? 'business' : 'person'}. Confirm the identity before preparing a request.`
-      : topic ? topic[1] : ordinary ? 'The saved search preview was not flagged for a concern. This does not establish that the page is harmless or about you.'
+      : topic ? topic[1] : note ? note[1] : ordinary ? 'The saved search preview was not flagged for a concern. This does not establish that the page is harmless or about you.'
       : 'No recognised topic label is available for this result. Review its context before deciding what to do.',
     priorityExplanation: priority === 'first' ? '“Review first” means the saved automatic score suggests checking this result sooner. It is not a measure of danger or proof of harm.'
       : priority === 'next' ? '“Review next” means the saved automatic score suggests checking this after the results marked “Review first”. It does not confirm harm.'

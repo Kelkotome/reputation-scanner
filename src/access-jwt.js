@@ -16,7 +16,8 @@ export function accessTeam(env) {
 async function signingKeys(team, refresh, fetchImpl) {
   const cached = certCache.get(team);
   if (cached && !refresh && cached.fetched_at + CERT_TTL_MS > Date.now()) return cached.keys;
-  const response = await fetchImpl(`https://${team}/cdn-cgi/access/certs`, { redirect: 'error' });
+  // Workers reject redirect:'error'; the status check below refuses a manual redirect.
+  const response = await fetchImpl(`https://${team}/cdn-cgi/access/certs`, { redirect: 'manual' });
   if (!response.ok) throw new Error('access_certs_unavailable');
   const body = await response.json();
   const keys = new Map();

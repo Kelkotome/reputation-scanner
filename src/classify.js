@@ -3,7 +3,7 @@
 
 import { callTool } from './llm.js';
 import { CATEGORY_SIGNALS, CATEGORY_BASE_SEVERITY } from './lexicon.js';
-import { norm, clip, hostOf, mentionsName, isBusinessSubject } from './text.js';
+import { norm, clip, hostOf, registrableDomain, mentionsName, nameForms, escapeRe, isBusinessSubject } from './text.js';
 
 export const CATEGORIES = [
   'scam_fraud', 'crime_legal', 'defamation_accusation', 'doxxing_personal_info', 'harassment',
@@ -103,10 +103,63 @@ export async function classifyWithClaude(env, scan, hits, fetchImpl) {
   return { results: map, usage };
 }
 
-/** Free heuristic: keyword category + context overlap for confidence. */
-export function classifyHeuristic(scan, h) {
-  const text = norm(`${h.title || ''} ${h.snippet || ''} ${h.context_text || ''}`);
-  const business = isBusinessSubject(scan);
+// Search previews on these sites often show a commenter's name directly before their comment.
+const SOCIAL_DOMAINS = new Set(['facebook.com', 'instagram.com', 'threads.net', 'threads.com', 'x.com', 'twitter.com', 'linkedin.com', 'reddit.com', 'tiktok.com', 'youtube.com']);
+const fold = (s) => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** True when the name opens a comment or post, as in "1y · 1 like. Esther Tan. Scammers are…". */
+function isAuthorLine(segment, forms) {
+  const text = fold(segment).trim();
+  return forms.some((form) => {
+    const name = form.split(/\s+/).map(escapeRe).join('\\s+');
+    return new RegExp(`(?:^|[.·!?]\\s*)${name}\\s*(?:[.▻▶►▷⊳>›]|\\d+\\s*(?:y|yr|mo|w|d|h|m)\\b)`, 'u').test(text);
+  });
+}
+
+/** True when the name is a byline, as in "By Esther Tan" or the "Esther Tan - Esther Tan" of newspaper archives. "Scammed by Esther Tan" is not. */
+function isWriterLine(segment, forms) {
+  const text = fold(segment).trim();
+  return forms.some((form) => {
+    const name = form.split(/\s+/).map(escapeRe).join('\\s+'), end = '(?=$|[^\\p{L}\\p{N}])';
+    return [`(?:^|[.·|:—–-]\\s*)(?:written\\s+|story\\s+|reported\\s+)?by\\s+${name}${end}`, `(?:^|[^\\p{L}\\p{N}])${name}\\s*[-–—|]\\s*${name}${end}`, `(?:^|[^\\p{L}\\p{N}])${name}\\s+by\\s+(?:a|an|the)\\s`,
+      `(?:^|[.·|]\\s*)${name}\\s*[,(|-]?\\s*(?:reports|reporter|journalist|correspondent|columnist|staff writer)${end}`]
+      .some((pattern) => new RegExp(pattern, 'u').test(text));
+  });
+}
+
+/** True when the name acts in a case, as in "represented by counsel Esther Tan". Bare "lawyer Esther Tan" is left out so "Lawyer Esther Tan charged" still flags. */
+function isCaseRoleLine(segment, forms) {
+  const text = fold(segment).trim();
+  const role = '(?:counsel|defen[cs]e\\s+(?:lawyer|counsel)|(?:his|her|their)\\s+(?:lawyer|counsel)|(?:deputy\\s+public\\s+)?prosecutor|dpp|(?:district\\s+)?judge|magistrate|coroner)';
+  return forms.some((form) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${role}\\s+${form.split(/\s+/).map(escapeRe).join('\\s+')}(?=$|[^\\p{L}\\p{N}])`, 'u').test(text));
+}
+
+/**
+ * Only text that discusses the person can flag them. Previews join unrelated page
+ * fragments with an ellipsis, so a concern word must share a fragment with the name.
+ * Returns the text to assess, or the whole result if the name is only in the URL.
+ */
+function textAboutSubject(scan, h) {
+  const whole = `${h.title || ''} ${h.snippet || ''} ${h.context_text || ''}`;
+  const forms = nameForms(scan.full_name, scan.variants, scan.context?.usernames);
+  const segments = [h.title, ...String(h.snippet || '').split(/\.{3}|…/), h.context_text].filter(Boolean);
+  const named = segments.filter((segment) => mentionsName(segment, forms));
+  if (!named.length) return { text: norm(whole), note: 'elsewhere_on_page' };
+  const social = SOCIAL_DOMAINS.has(registrableDomain(hostOf(h.url)));
+  const commented = social ? named.filter((segment) => isAuthorLine(segment, forms)) : [];
+  const wrote = named.filter((segment) => isWriterLine(segment, forms));
+  const roles = named.filter((segment) => isCaseRoleLine(segment, forms));
+  const about = named.filter((segment) => ![commented, wrote, roles].some((set) => set.includes(segment)));
+  return { text: norm(about.join(' ')), note: commented.length ? 'commenter' : wrote.length ? 'writer' : roles.length ? 'case_role' : 'elsewhere_on_page' };
+}
+
+// "Email address" on a public listing is not an exposed home address.
+const withoutOnlineAddresses = (text) => text.replace(/\b(?:e-?mail|ip|web|website|wallet)\s+address(?:es)?\b/g, ' ');
+
+const NOTE_REASONS = { commenter: 'The name appears as a commenter or poster', writer: 'The name appears as the writer', case_role: 'The name appears as a lawyer or official in the case', elsewhere_on_page: 'Concern wording appears away from the name' };
+
+function strongestSignal(rawText, business) {
+  const text = withoutOnlineAddresses(rawText);
   let best = null, bestHits = 0;
   for (const [cat, words] of Object.entries(CATEGORY_SIGNALS)) {
     const signals = business && cat === 'doxxing_personal_info' ? BUSINESS_PERSONAL_SIGNALS : words;
@@ -114,6 +167,16 @@ export function classifyHeuristic(scan, h) {
       ? mentionsName(text, [w]) : text.includes(norm(w))).length;
     if (n > bestHits) { best = cat; bestHits = n; }
   }
+  return { best, bestHits };
+}
+
+/** Free heuristic: keyword category + context overlap for confidence. */
+export function classifyHeuristic(scan, h) {
+  const text = norm(`${h.title || ''} ${h.snippet || ''} ${h.context_text || ''}`);
+  const business = isBusinessSubject(scan);
+  // Business listings name the company once, so their results are assessed whole.
+  const subject = business ? { text, note: 'elsewhere_on_page' } : textAboutSubject(scan, h);
+  const { best, bestHits } = strongestSignal(subject.text, business);
   const c = scan.context || {};
   const ctxTerms = [c.country, c.city, ...(business ? [c.industry] : [c.employer, c.school]), ...(c.usernames || [])].filter(Boolean).map(norm);
   let ctxMatches = ctxTerms.filter((t) => t && (business ? mentionsName(text, [t]) : text.includes(t))).length;
@@ -125,7 +188,12 @@ export function classifyHeuristic(scan, h) {
     if (websiteHost && (sameWebsite || citedHosts.some((host) => host === websiteHost || host.endsWith(`.${websiteHost}`)))) ctxMatches++;
   }
   const match_confidence = Math.min(0.9, 0.4 + 0.2 * ctxMatches);
-  if (!best) return { category: 'neutral', severity: 0, match_confidence, reason: 'No negative terms found near the name (heuristic).' };
+  if (!best) {
+    // Concern wording elsewhere stays visible, ahead of ordinary mentions, without a concern label.
+    if (strongestSignal(text, business).best) return { category: 'neutral', severity: 1, match_confidence, mention_note: subject.note,
+      reason: `${NOTE_REASONS[subject.note]} (heuristic).` };
+    return { category: 'neutral', severity: 0, match_confidence, mention_note: '', reason: 'No negative terms found near the name (heuristic).' };
+  }
   const severity = Math.min(5, (CATEGORY_BASE_SEVERITY[best] || 2) + (bestHits >= 3 ? 1 : 0) - (bestHits === 1 ? 1 : 0));
-  return { category: best, severity: Math.max(2, severity), match_confidence, reason: `Keyword match: ${best.replace(/_/g, ' ')} (local heuristic).` };
+  return { category: best, severity: Math.max(2, severity), match_confidence, mention_note: '', reason: `Keyword match: ${best.replace(/_/g, ' ')} (local heuristic).` };
 }

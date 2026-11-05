@@ -16,8 +16,8 @@ export function createBotCheck({ document = globalThis.document, window = global
       script.onerror = stop;
       script.onload = () => {
         if (!window.turnstile?.render) { stop(); return; }
-        const ready = () => { clearTimeout(timer); resolve(window.turnstile); };
-        if (typeof window.turnstile.ready === 'function') window.turnstile.ready(ready); else ready();
+        // turnstile.ready() throws on scripts loaded async; render works once the script has loaded.
+        clearTimeout(timer); resolve(window.turnstile);
       };
       document.head.append(script);
     }).catch(error => { scriptPromise = null; throw error; });

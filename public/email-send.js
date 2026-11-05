@@ -1,6 +1,6 @@
 // Isolated, explicit network boundary for optional account connection and sending.
 // No scan, hit ID, search query, or draft is shared until Send is confirmed.
-import { recipientRoute } from '/recipient-route.js?v=20260928-auto';
+import { recipientRoute } from '/recipient-route.js?v=20261101-send';
 import { senderProvider, senderMatches, manualDraft } from '/sender-workflow.js?v=20260930-sender';
 export function setupEmailSending({ onAccepted, beforeSend = async () => {}, context = () => ({}), fields = {}, canSchedule = () => true, canSend = () => true }) {
   const $ = s => document.querySelector(fields[s] || s);
@@ -18,10 +18,11 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
   $('#draft-email').closest('.field').after(box);
   const recipient = document.createElement('div');
   recipient.className = 'field';
-  recipient.innerHTML = `<label for="send-recipient">Reporting recipient</label><input id="send-recipient" type="email" maxlength="254" autocomplete="off" placeholder="Selected automatically when a verified email is available"><p id="recipient-routing" class="hint"></p><a id="recipient-route-link" class="button secondary" target="_blank" rel="noopener noreferrer" hidden></a><button id="send-platform" type="button" class="button primary" disabled hidden>Review & send from connected account</button><p id="send-status" class="inline-status" role="status"></p>`;
-  $('#draft-body').closest('.field').after(recipient);
+  recipient.innerHTML = `<label for="send-recipient">Send to</label><input id="send-recipient" type="email" maxlength="254" autocomplete="off" placeholder="Selected automatically when a verified email is available"><p id="recipient-routing" class="hint"></p><a id="recipient-route-link" class="button secondary" target="_blank" rel="noopener noreferrer" hidden></a><button id="send-platform" type="button" class="button primary" disabled hidden>Review & send from connected account</button><p id="send-status" class="inline-status" role="status"></p>`;
+  // After the review tick box, so the send buttons come once the draft is checked.
+  $('#draft-accurate').closest('label').after(recipient);
   const manual = document.createElement('section');
-  manual.innerHTML = `<h3>Use your own email app</h3><p class="hint">For other providers, open or download a draft and send it yourself. Select the sending address entered above in your email app. Opening a draft does not send it. Automatic follow-ups are unavailable for this route; record the sent date and follow up manually.</p><div class="modal-actions"><button type="button" class="button secondary" id="manual-email-open">Open draft in email app</button><button type="button" class="button secondary" id="manual-email-download">Download email draft (.eml)</button></div>`;
+  manual.innerHTML = `<div class="modal-actions"><button type="button" class="button secondary" id="manual-email-open">Open in my email app</button><button type="button" class="button ghost compact" id="manual-email-download">Download draft (.eml)</button></div>`;
   recipient.append(manual);
   const choices = document.createElement('div'); choices.className = 'field'; choices.hidden = true;
   choices.innerHTML = '<label for="infrastructure-destination">Available escalation destinations</label><select id="infrastructure-destination"></select>';
@@ -51,9 +52,10 @@ export function setupEmailSending({ onAccepted, beforeSend = async () => {}, con
     $('#send-recipient').hidden = $('label[for="send-recipient"]').hidden = route.kind === 'form' || route.kind === 'manual';
     $('#recipient-routing').textContent = route.label;
     const link = $('#recipient-route-link');
-    link.hidden = !route.url && route.kind !== 'unknown';
+    link.hidden = route.kind === 'email' || (!route.url && route.kind !== 'unknown');
+    manual.hidden = route.kind === 'form' || route.kind === 'manual';
     link.href = route.url || helpUrl || document.querySelector('#expert-link')?.href || '/contact.html';
-    link.textContent = route.kind === 'form' ? 'Open selected reporting form ↗' : route.kind === 'email' ? 'View official reporting contact ↗' : 'Ask us to find the reporting contact';
+    link.textContent = route.kind === 'form' ? 'Open the reporting form ↗' : 'Ask us to find where to report';
     gate();
   }
   async function request(path, data) {

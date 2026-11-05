@@ -66,7 +66,7 @@ async function cappedJson(res) {
 }
 async function dns(host, fetchImpl, signal) {
   const u = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=A`;
-  const res = await fetchImpl(u, { headers: { accept: 'application/dns-json' }, redirect: 'error', signal });
+  const res = await fetchImpl(u, { headers: { accept: 'application/dns-json' }, redirect: 'manual', signal });
   if (!res.ok) { await res.body?.cancel().catch(() => {}); return []; }
   const data = await cappedJson(res);
   const addresses = (data?.Answer || []).filter((a) => a.type === 1).map((a) => a.data);

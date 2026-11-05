@@ -5,10 +5,10 @@ export function recipientRoute(channel) {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch { return ''; }
   };
   const form = https(channel?.form);
-  if (form) return { kind: 'form', email: '', url: form, label: `${channel.name || 'This platform'} uses a reporting form. The correct route is selected below.` };
+  if (form) return { kind: 'form', email: '', url: form, label: `${channel.name || 'This platform'} takes reports through its own form. Copy your request, then paste it there.` };
   if (validEmail(channel?.email) && https(channel?.source)) return { kind: 'email', email: channel.email, url: https(channel.source),
-    label: channel.kind ? `Escalation contact selected automatically: ${channel.name}. ${channel.how} Review the destination before sending.`
-      : `Recipient selected automatically from ${channel.name || 'the platform'}’s published reporting contact${channel.verified_on ? ` (checked ${channel.verified_on})` : ''}. Review it before sending.` };
-  if (channel) return { kind: 'manual', email: '', url: '', label: channel.how || 'Use this platform’s in-app Report action. No verified email is available.' };
-  return { kind: 'unknown', email: '', url: '', label: 'No verified reporting contact is available for this domain yet. Ask us to identify the correct destination, or enter an address you have verified.' };
+    label: channel.kind ? `${channel.name} provides the website’s network or domain, and can pass your report on.`
+      : `${channel.name || 'The platform'}’s published reporting address.` };
+  if (channel) return { kind: 'manual', email: '', url: '', label: channel.how || 'Use the Report button inside this platform’s app.' };
+  return { kind: 'unknown', email: '', url: '', label: 'We don’t have a reporting address for this site yet. Ask us, or enter one you’ve checked.' };
 }

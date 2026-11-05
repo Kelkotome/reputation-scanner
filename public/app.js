@@ -1,10 +1,10 @@
-import { localApi, listSaved, clearLocalData, assistancePreview, setChallengeHandler } from '/local-api.js?v=20261004-ai';
+import { localApi, listSaved, clearLocalData, assistancePreview, setChallengeHandler } from '/local-api.js?v=20261105-role';
 import { searchCoverageView, liveSearchConsentView, aiDraftingNotice } from '/search-coverage.js?v=20261004-ai';
 import { requestAiConsent, aiDraftingAvailable, aiProviderName, AI_DRAFT_LABEL } from '/ai-draft.js?v=20261004-ai';
-import { createBotCheck } from '/bot-check.js?v=20261004-ai';
+import { createBotCheck } from '/bot-check.js?v=20261105-load';
 import { additionalResultPreview } from '/result-preview.js?v=20260927-contact';
-import { resultLabelView } from '/result-labels.js?v=20261001-labels';
-import { setupEmailSending } from '/email-send.js?v=20261101-simple';
+import { resultLabelView } from '/result-labels.js?v=20261105-role';
+import { setupEmailSending } from '/email-send.js?v=20261101-send';
 import { lookupReportingContact } from '/reporting-lookup.js?v=20260928-domain';
 import { stopItemFollowups, forgetRecordMetadata } from '/followup-control.js?v=20260930-sender';
 
@@ -621,7 +621,7 @@ function initReport() {
     }
     $('#more-banner').hidden = extra.length === 0;
     $('#more-count').textContent = `${preview.count} additional ${preview.count === 1 ? 'link found' : 'links found'}`;
-    $('#more-preview').replaceChildren(...preview.sources.map((source) => {
+    $('#more-preview').replaceChildren(...preview.sources.slice(0, 8).map((source) => {
       const item = node('li', 'locked-result-preview');
       item.append(node('strong', '', source.domain), node('span', 'hint', `${source.count} ${source.count === 1 ? 'link' : 'links'} · Contact us for details`));
       const placeholder = node('span', 'locked-result-lines');
@@ -629,6 +629,7 @@ function initReport() {
       item.append(placeholder);
       return item;
     }));
+    if (preview.sources.length > 8) $('#more-preview').append(node('li', 'hint', `And ${preview.sources.length - 8} more websites.`));
     const sameCount = Number(report.sameNameCount) || other.length;
     $('#same-name').hidden = sameCount === 0 && other.length === 0;
     $('#same-name-title').textContent = `${sameCount} ${sameCount === 1 ? 'result may' : 'results may'} ${isBusiness()
@@ -819,7 +820,7 @@ function initReport() {
   }
   function gateDraft() {
     const allowed = $('#draft-accurate').checked && !$('#draft-editor').hidden && Boolean($('#draft-email').value.trim()) && $('#draft-email').checkValidity();
-    for (const id of ['copy-draft', 'open-form', 'open-google', 'email-draft', 'mark-sent']) $(`#${id}`).disabled = !allowed;
+    for (const id of ['copy-draft', 'mark-sent']) $(`#${id}`).disabled = !allowed;
   }
   const emailSending = setupEmailSending({ context: () => ({ record_id: scanId, hit_id: currentHit?.id, message_kind: activeDraftTemplate === 'follow_up' ? 'followup' : 'initial' }), beforeSend: () => activeDraftTemplate === 'follow_up' ? stopItemFollowups(scanId,currentHit?.id,'cancelled') : Promise.resolve(), canSchedule: () => ['found','drafted','new','unreviewed'].includes(currentHit?.status), canSend: () => report?.provider !== 'mock', onAccepted: async () => {
     if (!currentHit) return;
@@ -832,9 +833,6 @@ function initReport() {
   function emailContacts(info) {
     const contacts = [info.channel?.email, info.abuse?.hostAbuse, info.abuse?.registrarAbuse].flat().filter(Boolean);
     return [...new Set(contacts.filter((email) => typeof email === 'string' && /^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/.test(email)))];
-  }
-  function reportingForm(info) {
-    return safeUrl(info.channel?.form) || safeUrl(info.abuse?.cloudflare === true ? 'https://abuse.cloudflare.com' : info.abuse?.cloudflare);
   }
   function renderChannels(info) {
     emailSending.setChannel(info.channel);
@@ -866,17 +864,18 @@ function initReport() {
         if (currentHit === lookupHit) add('Couldn’t find where to report this', 'Ask us to find the right publisher or host.');
       });
     }
-    if (info.google?.url) add('Google search results', `${info.google.label || 'Google removal route'}. Removing a search result doesn’t remove the original page.`, true);
+    const googleUrl = safeUrl(info.google?.url);
+    if (googleUrl) {
+      add('Google search results', `${info.google.label || 'Google removal route'}. Removing a search result doesn’t remove the original page.`, true);
+      const link = node('a', '', 'Open Google’s removal form ↗');
+      link.href = googleUrl; link.target = '_blank'; link.rel = 'noopener noreferrer';
+      more.lastElementChild.append(link);
+    }
     if (info.abuse?.host) add('Hosting provider', info.abuse.host, true);
     if (info.abuse?.registrar) add('Domain registrar', info.abuse.registrar, true);
     const emails = emailContacts(info);
     if (emails.length) add('Abuse contacts', emails.join(' · '), true);
     if (info.abuse?.cloudflare) add('Cloudflare', 'Use the Cloudflare abuse form and pick the matching report type.', true);
-    $('#open-form').hidden = !reportingForm(info);
-    $('#open-google').hidden = !safeUrl(info.google?.url);
-    $('#email-draft').hidden = !emails.length;
-    $('#email-route-field').hidden = emails.length < 2;
-    $('#email-route').replaceChildren(...emails.map((email) => { const option = node('option', '', email); option.value = email; return option; }));
   }
   async function discoverTemplates() {
     if (!currentHit) return;
@@ -1023,15 +1022,6 @@ function initReport() {
       $('#draft-body').focus(); $('#draft-body').select();
       $('#draft-feedback').textContent = 'Automatic copying is unavailable. Your message is selected so you can copy it manually.';
     }
-  });
-  $('#open-form').addEventListener('click', () => { if ($('#draft-accurate').checked && draftInfo) openExternal(reportingForm(draftInfo)); });
-  $('#open-google').addEventListener('click', () => { if ($('#draft-accurate').checked && draftInfo) openExternal(draftInfo.google?.url); });
-  $('#email-draft').addEventListener('click', () => {
-    if (!$('#draft-accurate').checked || !draftInfo) return;
-    const address = $('#email-route').value;
-    if (!emailContacts(draftInfo).includes(address)) return;
-    location.href = `mailto:${encodeURIComponent(address)}?subject=${encodeURIComponent($('#draft-subject').value)}&body=${encodeURIComponent($('#draft-body').value)}`;
-    $('#draft-feedback').textContent = 'Your email app opens a draft. Choose your own sending account, review the request, then send it. Opening this draft does not send it or remove the page.';
   });
   $('#mark-sent').addEventListener('click', async () => {
     if (!$('#draft-accurate').checked || !currentHit) return;
